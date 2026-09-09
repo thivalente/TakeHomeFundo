@@ -1,81 +1,122 @@
-# Fundo Take-Home — Requisitos do projeto
+# Take-Home Test: Full-Stack Engineer (.NET + Next.js)
 
-## Objetivo
+## Objective
 
-Construir um fluxo simples de solicitação de empréstimo:
+Build a small loan application flow — a simplified version of our real product.
 
-1. O usuário preenche um formulário no frontend Next.js.
-2. O backend .NET aplica as regras de decisão.
-3. Solicitações aprovadas salvam ou atualizam um cliente e uma aplicação.
-4. Um evento é processado em background e envia os dados para um serviço externo mock via HTTP.
+A user fills a form, a rule engine decides if the application is approved or denied, approved applications are saved in our database, and a background event sends the same data to an external service over HTTP.
 
-## Stack obrigatória
+We care about simplicity and design. Over-engineering is a negative point.
 
-- Backend: .NET/C#.
-- Frontend: Next.js.
-- Serviço externo: mock local construído por nós.
-- Banco: SQLite, PostgreSQL ou SQL Server; usar transações reais. EF Core InMemory não é permitido.
+## Stack (required)
 
-## Dados do formulário
+| Part | Technology |
+|---|---|
+| Backend | .NET (C#) |
+| Frontend | Next.js |
+| External service | A mock you build (json-server, a small Node/.NET app, whatever you prefer) |
+
+Database is your choice (SQL Server, PostgreSQL, SQLite), as long as it supports real transactions — the EF Core in-memory provider does not, so it is not an option here. Everything else — UI library, styling, messaging, containers — is up to you.
+
+## The Flow
+
+### 1. Application form (Next.js)
+
+Collect:
 
 - First name
 - Last name
-- Address, incluindo state
+- Address (must include state)
 - Company name
 - Requested amount
 - SSN
 
-## Regras de decisão
+Design the pages and the UX the way you think is best.
 
-- State `NY` → negar.
-- SSN na blacklist → negar.
-- Sem regra de negação → aprovar.
-- A decisão deve ficar em um rule engine no backend.
-- Adicionar uma nova regra não deve exigir alteração nas regras existentes.
-- Solicitações negadas devem levar a uma página de negação.
+### 2. Decision — must run through a rule engine
 
-## Persistência
+The decision logic must live in a rule engine on the backend, not scattered inside a controller or a component. Adding a new rule should not require changing existing ones.
 
-Em uma aprovação:
+Deny rules:
 
-- Criar ou atualizar `Customer` com os dados pessoais.
-- Criar ou atualizar `Application` com `id`, `requestedAmount` e `customerId`.
-- O SSN identifica o cliente retornante.
-- O mesmo SSN não pode criar um segundo cliente ou uma segunda aplicação.
+1. State is NY → deny.
+2. SSN is on a blacklist → deny.
 
-## Transação e evento
+Denied users are redirected to a denied page. Any denial reason handling is your call.
 
-- Customer, Application e evento devem fazer parte de uma unidade transacional.
-- Se o banco ou a publicação do evento falhar, não pode haver dados incompletos.
-- O evento deve ser processado em background, fora da requisição HTTP.
-- Cliente novo → criar no serviço externo.
-- Cliente retornante → atualizar no serviço externo.
-- O serviço externo deve receber os dados por HTTP e retornar `200`.
+If no deny rule matches, the application is approved and continues.
 
-## Testes prioritários
+### 3. Persistence
 
-- Rule engine: aprovação, estado NY e SSN blacklist.
-- Cliente retornante: atualização sem duplicação.
-- Endpoint principal.
-- Publicação/processamento do evento, quando aplicável.
+On approval, create two records:
 
-## Documentação e entrega
+- Customer — the personal data from the form.
+- Application — id, requestedAmount, customerId.
 
-- README com comandos copiáveis para executar backend, frontend, mock e banco.
-- README com comandos para executar os testes.
-- README com dados de teste para aprovação, negação e cliente retornante.
-- Documentação da estrutura e responsabilidades das partes do sistema.
-- Explicação de como adicionar uma nova regra.
-- Explicação do evento em background, chamada HTTP e transação.
-- Trade-offs e itens conscientemente deixados de fora.
-- Link de vídeo público no topo do README.
-- Um único repositório contendo backend, frontend e mock.
+This must be transactional. Saving the customer, saving the application, and publishing the event are one unit of work: if any of them fails, roll everything back — no half-saved customer, no orphan application, and no event published. The same applies to the returning-customer path (updates instead of inserts).
 
-## Critérios de simplicidade
+### 4. Returning customer
 
-- Manter controllers/endpoints finos.
-- Manter regras no domínio/aplicação.
-- Isolar banco, HTTP e mensageria como infraestrutura substituível.
-- Evitar camadas, padrões e abstrações sem necessidade real.
-- Autenticação não é necessária.
+While checking the SSN, if the customer already exists in the database:
 
+- Update the existing customer record with the new data from the form — do not create a second customer.
+- Update the existing application (for example, the requested amount) — do not create a second application.
+- The background event must update the external service, not create a new record there.
+
+In short: same SSN means one customer and one application in the database, updated with the latest submission.
+
+### 5. Background event → external service
+
+After both records are saved, publish an event processed in the background (not inside the HTTP request that answers the form). The handler sends the customer and application to an external service over HTTP.
+
+- New customer → create in the external service.
+- Returning customer → update in the external service.
+
+The external service is a mock: it receives the payload and returns 200. Build it however you like. Design the contract (endpoints, payload, retries or not) the way you consider best — and explain the choice.
+
+## What We Evaluate
+
+1. **Simplicity** — the smallest solution that solves the problem. No layers, patterns, or abstractions that nothing needs.
+2. **Design** — clean architecture: dependencies point inward, business rules live in the domain/application layer, the controller is thin, infrastructure (HTTP client, DB, messaging) is replaceable.
+3. **UI/UX** — clear, functional, and pleasant. It does not need to be beautiful, it needs to be thought through.
+4. **Tests** — cover what matters: the rule engine, the returning-customer path, and the endpoint. Not 100% coverage.
+5. **Documentation** — see below.
+
+Your code will be reviewed by Claude Code using Fundo’s internal review skills, which check clean architecture, DDD, SOLID and naming. Write the documentation so a reviewer can validate your decisions without asking you.
+
+## Documentation Required
+
+In your repository, include:
+
+### README.md
+
+- How to run everything locally (backend, frontend, mock service, database) — copy-paste commands.
+- How to run the tests.
+- Test data: which SSNs are blacklisted, what to type to get approved, denied, or returning-customer.
+
+### ARCHITECTURE.md (or a section in the README)
+
+- Project structure and what each layer/folder is responsible for.
+- How the rule engine works and how to add a new rule.
+- How the background event works and how the external service is called.
+- How the transaction is handled: what happens if the database or the event publishing fails.
+- Trade-offs: what you chose to leave out, and why.
+
+Keep the docs short. One good page beats five vague ones.
+
+## Deliverables
+
+- One repository with the backend, the frontend, and the mock external service.
+- Everything running locally with clear instructions.
+- A short video of the app running, with the link at the top of your README.md. Use Loom, Jam, Figma/FigJam recording, or any tool you prefer — just make sure the link is public.
+- Send us the repository link when you are done.
+
+The video should walk through the flows: approved application, denial by state NY, denial by blacklisted SSN, returning customer updating the existing records, and the external service receiving the data. A few minutes is enough.
+
+Suggested effort: around two days. If something is missing, say so in the README instead of rushing it.
+
+## Notes
+
+- Authentication is not required.
+- Seed data, Docker, CI, structured logging, etc. are welcome — only if they earn their place.
+- Feel free to add anything you consider necessary. Just be ready to explain why it exists.
