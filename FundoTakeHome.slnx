@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/01- Api/">
+    <Project Path="src/backend/FundoTakeHome.Api/FundoTakeHome.Api.csproj" />
+  </Folder>
+  <Folder Name="/02- Tests/">
+    <Project Path="tests/FundoTakeHome.Tests/FundoTakeHome.Tests.csproj" />
+  </Folder>
+</Solution>
