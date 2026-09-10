@@ -1,8 +1,8 @@
-using FundoTakeHome.Api.Features.SubmitApplication.Domain.Entities;
-using FundoTakeHome.Api.Features.SubmitApplication.Domain.Enums;
-using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects;
-using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects.Identifiers;
-using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence.Outbox;
+using FundoTakeHome.Backend.Features.SubmitApplication.Domain.Entities;
+using FundoTakeHome.Backend.Features.SubmitApplication.Domain.Enums;
+using FundoTakeHome.Backend.Features.SubmitApplication.Domain.ValueObjects;
+using FundoTakeHome.Backend.Features.SubmitApplication.Domain.ValueObjects.Identifiers;
+using FundoTakeHome.Backend.Features.SubmitApplication.Infrastructure.Persistence.Outbox;
 using Shouldly;
 
 namespace FundoTakeHome.Tests.Features.SubmitApplication;

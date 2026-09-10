@@ -1,7 +1,7 @@
 using FluentValidation;
 using FundoTakeHome.Api.Common;
-using FundoTakeHome.Api.Features.SubmitApplication.Application;
-using FundoTakeHome.Api.Features.SubmitApplication.Domain.Common.Errors;
+using FundoTakeHome.Backend.Features.SubmitApplication.Application;
+using FundoTakeHome.Backend.Features.SubmitApplication.Domain.Common.Errors;
 
 namespace FundoTakeHome.Api.Features.SubmitApplication.Endpoints;
 

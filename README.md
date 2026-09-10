@@ -29,11 +29,31 @@ dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
 dotnet test
 ```
 
-Os testes foram preparados para xUnit, Shouldly e `WebApplicationFactory`. A execução da suíte fica sob responsabilidade do usuário.
+Os testes usam xUnit, Shouldly e Moq.
 
-## Estrutura inicial
+A cobertura está concentrada nas regras de negócio e nos casos de uso da aplicação. A execução da suíte fica sob responsabilidade do usuário.
 
-- `src/backend/FundoTakeHome.Api`: API .NET 10 e fundação backend.
-- `tests/FundoTakeHome.Tests`: testes backend.
-- `src/frontend`: placeholder reservado para Next.js.
-- `src/mock`: placeholder reservado para o mock externo.
+## Estrutura da solução
+
+- `src/backend/FundoTakeHome.Api`: host HTTP da API e endpoints.
+- `src/backend/FundoTakeHome.Worker`: host do processamento assíncrono da Outbox.
+- `src/backend/FundoTakeHome.Backend`: código compartilhado de Domain, Application e Infrastructure.
+- `tests/FundoTakeHome.Tests`: testes de Domain e Application.
+- `src/frontend`: aplicação frontend.
+- `src/mock`: serviço externo simulado.
+
+## Executar os hosts localmente
+
+API:
+
+```bash
+dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
+```
+
+Worker:
+
+```bash
+dotnet run --project src/backend/FundoTakeHome.Worker
+```
+
+A API e o Worker usam o mesmo banco SQLite e compartilham o código de Domain, Application e Infrastructure pelo projeto `FundoTakeHome.Backend`.

@@ -33,16 +33,17 @@ decisão?”
 
 ### Decisões
 
-- Usei apenas um projeto de aplicação para manter a solução simples e evitar over-engineering, uma preocupação explícita do desafio. Em um projeto real, eu separaria a aplicação em mais projetos.
-- Usei Vertical Slice para evitar que as responsabilidades fiquem confusas dentro desse único projeto, mantendo cada feature organizada em um mesmo espaço.
-- Mesmo com um único projeto, preservei os boundaries da Clean Architecture: a API ficará separada dos casos de uso, as regras de negócio ficarão isoladas e a infraestrutura será mantida substituível, com as dependências apontando para dentro.
+- Organizei a solução em hosts e código compartilhado. A API e o Worker são projetos executáveis separados, enquanto Domain, Application e Infrastructure ficam no projeto `FundoTakeHome.Backend`.
+- Usei Vertical Slice para manter cada fluxo organizado por feature, sem criar camadas genéricas sem necessidade.
+- Mantive os boundaries da Clean Architecture dentro do projeto compartilhado, com dependências apontando para dentro.
 - Usei Strategy para representar cada regra de decisão de forma independente. Assim, posso adicionar uma nova regra sem alterar as regras existentes, conforme solicitado pelo desafio.
 - Usei `ErrorOr` para representar erros esperados de negócio como resultado do fluxo, sem usar exceptions como controle normal da aplicação. Falhas inesperadas de infraestrutura seguem para o tratamento global de exceções.
 - Usei `FluentValidation` para concentrar a validação das propriedades e `Shouldly` para manter os testes legíveis.
 - Usei Minimal API porque o desafio tem poucos endpoints e não precisa da estrutura adicional de controllers.
 - Mantive o fluxo do frontend como uma SPA de uma única tela, com formulário e resultado no mesmo contexto, para reduzir navegação e manter a experiência simples e direta, conforme a preocupação do desafio com simplicidade.
 - Usei SQLite porque é simples para executar localmente e suporta transações reais, como exigido pelo desafio. Dados de negócio que precisam ser consultados de forma reproduzível, como a blacklist de SSNs, também ficam persistidos no banco em vez de serem mantidos em memória.
-- Usei xUnit e `WebApplicationFactory` para testar as regras e os endpoints relevantes.
+- Usei xUnit, Shouldly e Moq para testar regras de negócio e casos de uso da Application.
+- Mantive os testes restritos a Domain e Application, onde está o comportamento de negócio relevante.
 - Usei o Transactional Outbox para salvar os dados aprovados e o evento na mesma transação. O worker processa o evento depois, fora da requisição HTTP.
 - Usei Value Objects para representar IDs, SSN, `requestedAmount` e `state`, evitando valores primitivos espalhados e concentrando suas validações e normalizações.
 - Usei GUID version 7 para os identificadores, gerando-os na aplicação antes da persistência. Assim, os IDs já estão disponíveis para relacionamentos, eventos e responses.

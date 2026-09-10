@@ -1,14 +1,14 @@
 using FluentValidation;
-using FundoTakeHome.Api.Infrastructure.Persistence;
-using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence;
+using FundoTakeHome.Backend.Infrastructure.Persistence;
+using FundoTakeHome.Backend.Features.SubmitApplication.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using FundoTakeHome.Api.Features.SubmitApplication.Endpoints;
-using FundoTakeHome.Api.Features.SubmitApplication.Application;
-using FundoTakeHome.Api.Features.SubmitApplication.Application.Interfaces;
-using FundoTakeHome.Api.Infrastructure.Time;
+using FundoTakeHome.Backend.Features.SubmitApplication.Application;
+using FundoTakeHome.Backend.Features.SubmitApplication.Application.Interfaces;
+using FundoTakeHome.Backend.Infrastructure.Time;
 using FundoTakeHome.Api.Common.Middlewares;
-using FundoTakeHome.Api.Features.SubmitApplication.Application.DecisionRules;
-using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence.Blacklist;
+using FundoTakeHome.Backend.Features.SubmitApplication.Application.DecisionRules;
+using FundoTakeHome.Backend.Features.SubmitApplication.Infrastructure.Persistence.Blacklist;
 
 var builder = WebApplication.CreateBuilder(args);
 
