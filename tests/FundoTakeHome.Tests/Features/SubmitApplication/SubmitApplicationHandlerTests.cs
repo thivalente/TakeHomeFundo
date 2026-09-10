@@ -1,5 +1,7 @@
+using ErrorOr;
 using FundoTakeHome.Api.Features.SubmitApplication.Application;
 using FundoTakeHome.Api.Features.SubmitApplication.Application.Interfaces;
+using FundoTakeHome.Api.Features.SubmitApplication.Domain.Common.Errors;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.Entities;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.Enums;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects;
@@ -77,8 +79,38 @@ public sealed class SubmitApplicationHandlerTests
         unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task ShouldReturnStateDenialAndAvoidPersistence_WhenApplicationIsFromNewYork()
+    {
+        var store = new Mock<IApprovedApplicationStore>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var dateTimeProvider = new Mock<IDateTimeProvider>();
+        var decisionRuleEngine = new Mock<IDecisionRuleEngine>();
+        decisionRuleEngine.Setup(engine => engine.EvaluateAsync(It.IsAny<DecisionRuleInput>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<IReadOnlyList<Error>>([ApplicationDenialErrors.StateIsNewYork]));
+
+        var result = await CreateHandler(store, unitOfWork, dateTimeProvider, decisionRuleEngine).HandleAsync(CreateRequest(), CancellationToken.None);
+
+        result.IsError.ShouldBeTrue();
+        result.Errors.ShouldContain(error => error.Code == ApplicationDenialErrors.StateIsNewYork.Code);
+        store.Verify(repository => repository.FindCustomerBySsnAsync(It.IsAny<Ssn>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(repository => repository.AddCustomer(It.IsAny<Customer>()), Times.Never);
+        store.Verify(repository => repository.AddLoanApplication(It.IsAny<LoanApplication>()), Times.Never);
+        store.Verify(repository => repository.AddOutboxMessage(It.IsAny<Customer>(), It.IsAny<LoanApplication>(), It.IsAny<EntityOperationEnum>(), It.IsAny<DateTimeOffset>()), Times.Never);
+        unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static SubmitApplicationHandler CreateHandler(Mock<IApprovedApplicationStore> store, Mock<IUnitOfWork> unitOfWork, Mock<IDateTimeProvider> dateTimeProvider) =>
-        new(store.Object, unitOfWork.Object, dateTimeProvider.Object);
+        CreateHandler(store, unitOfWork, dateTimeProvider, CreateDecisionRuleEngine());
+
+    private static SubmitApplicationHandler CreateHandler(Mock<IApprovedApplicationStore> store, Mock<IUnitOfWork> unitOfWork, Mock<IDateTimeProvider> dateTimeProvider, Mock<IDecisionRuleEngine> decisionRuleEngine) =>
+        new(store.Object, unitOfWork.Object, dateTimeProvider.Object, decisionRuleEngine.Object);
+
+    private static Mock<IDecisionRuleEngine> CreateDecisionRuleEngine()
+    {
+        var decisionRuleEngine = new Mock<IDecisionRuleEngine>();
+        decisionRuleEngine.Setup(engine => engine.EvaluateAsync(It.IsAny<DecisionRuleInput>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<IReadOnlyList<Error>>([]));
+        return decisionRuleEngine;
+    }
 
     private static SubmitApplicationRequest CreateRequest() => new("Jane", "Doe", "1 Main Street", "CA", "Fundo", 1000m, "123-45-6789");
 }

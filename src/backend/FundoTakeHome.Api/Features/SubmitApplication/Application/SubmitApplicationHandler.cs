@@ -3,10 +3,11 @@ using FundoTakeHome.Api.Features.SubmitApplication.Application.Interfaces;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.Common.Errors;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.Entities;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.Enums;
+using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects;
 
 namespace FundoTakeHome.Api.Features.SubmitApplication.Application;
 
-public sealed class SubmitApplicationHandler(IApprovedApplicationStore store, IUnitOfWork unitOfWork, IDateTimeProvider dateTimeProvider)
+public sealed class SubmitApplicationHandler(IApprovedApplicationStore store, IUnitOfWork unitOfWork, IDateTimeProvider dateTimeProvider, IDecisionRuleEngine decisionRuleEngine)
 {
     public async Task<ErrorOr<SubmitApplicationResult>> HandleAsync(SubmitApplicationRequest request, CancellationToken cancellationToken)
     {
@@ -14,6 +15,11 @@ public sealed class SubmitApplicationHandler(IApprovedApplicationStore store, IU
 
         if (customerResult.IsError)
             return customerResult.Errors;
+
+        var decisionErrors = await decisionRuleEngine.EvaluateAsync(new DecisionRuleInput(customerResult.Value), cancellationToken);
+
+        if (decisionErrors.Count > 0)
+            return decisionErrors.ToList();
 
         var applicationResult = LoanApplication.Create(customerResult.Value.Id, request.RequestedAmount);
 

@@ -3,6 +3,7 @@ using FundoTakeHome.Api.Features.SubmitApplication.Domain.Entities;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects;
 using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects.Identifiers;
 using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence.Outbox;
+using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence.Blacklist;
 using Microsoft.EntityFrameworkCore;
 
 namespace FundoTakeHome.Api.Infrastructure.Persistence;
@@ -14,6 +15,8 @@ public sealed class FundoTakeHomeDbContext(DbContextOptions<FundoTakeHomeDbConte
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<LoanApplication> Applications => Set<LoanApplication>();
+
+    public DbSet<BlacklistedSsnRecord> BlacklistedSsnRecords => Set<BlacklistedSsnRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +46,13 @@ public sealed class FundoTakeHomeDbContext(DbContextOptions<FundoTakeHomeDbConte
             entity.Property(application => application.CustomerId).HasConversion(id => id.Value, value => CustomerId.From(value).Value!);
             entity.Property(application => application.RequestedAmount).HasConversion(amount => amount.Value, value => RequestedAmount.From(value).Value);
             entity.Property(application => application.Status).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<BlacklistedSsnRecord>(entity =>
+        {
+            entity.HasKey(blacklistedSsn => blacklistedSsn.Ssn);
+            entity.Property(blacklistedSsn => blacklistedSsn.Ssn).HasMaxLength(9).IsRequired();
+            entity.HasData(new BlacklistedSsnRecord { Ssn = "000000000" }, new BlacklistedSsnRecord { Ssn = "111111111" }, new BlacklistedSsnRecord { Ssn = "222222222" }, new BlacklistedSsnRecord { Ssn = "333333333" }, new BlacklistedSsnRecord { Ssn = "444444444" }, new BlacklistedSsnRecord { Ssn = "555555555" }, new BlacklistedSsnRecord { Ssn = "666666666" }, new BlacklistedSsnRecord { Ssn = "777777777" }, new BlacklistedSsnRecord { Ssn = "888888888" }, new BlacklistedSsnRecord { Ssn = "999999999" });
         });
     }
 }

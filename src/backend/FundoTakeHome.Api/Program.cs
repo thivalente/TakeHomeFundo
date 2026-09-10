@@ -7,6 +7,8 @@ using FundoTakeHome.Api.Features.SubmitApplication.Application;
 using FundoTakeHome.Api.Features.SubmitApplication.Application.Interfaces;
 using FundoTakeHome.Api.Infrastructure.Time;
 using FundoTakeHome.Api.Common.Middlewares;
+using FundoTakeHome.Api.Features.SubmitApplication.Application.DecisionRules;
+using FundoTakeHome.Api.Features.SubmitApplication.Infrastructure.Persistence.Blacklist;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddValidatorsFromAssemblyContaining<SubmitApplicationRequestValidator>();
 builder.Services.AddDbContext<FundoTakeHomeDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<IApprovedApplicationStore, ApprovedApplicationStore>();
+builder.Services.AddScoped<IBlacklistSsnReader, SqliteBlacklistSsnReader>();
+builder.Services.AddScoped<IDecisionRule<DecisionRuleInput>, StateIsNyRule>();
+builder.Services.AddScoped<IDecisionRule<DecisionRuleInput>, BlacklistedSsnRule>();
+builder.Services.AddScoped<IDecisionRuleEngine, DecisionRuleEngine>();
 builder.Services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<FundoTakeHomeDbContext>());
 builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddScoped<SubmitApplicationHandler>();
@@ -26,7 +32,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FundoTakeHomeDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
 }
 
 if (app.Environment.IsDevelopment())

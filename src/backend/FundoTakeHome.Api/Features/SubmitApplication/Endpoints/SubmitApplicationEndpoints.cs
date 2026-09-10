@@ -1,6 +1,7 @@
 using FluentValidation;
 using FundoTakeHome.Api.Common;
 using FundoTakeHome.Api.Features.SubmitApplication.Application;
+using FundoTakeHome.Api.Features.SubmitApplication.Domain.Common.Errors;
 
 namespace FundoTakeHome.Api.Features.SubmitApplication.Endpoints;
 
@@ -25,8 +26,9 @@ public static class SubmitApplicationEndpoints
 
         if (result.IsError)
         {
-            var errors = result.Errors.Select(error => new ApiError(error.Code, null, error.Description)).ToArray();
-            return Results.BadRequest(new ApiResponse<object>(null, errors));
+            var errors = result.Errors.Select(error => new ApiError(error.Code, ApplicationDenialErrors.GetField(error), error.Description)).ToArray();
+            var statusCode = result.Errors.Any(ApplicationDenialErrors.IsDenial) ? StatusCodes.Status422UnprocessableEntity : StatusCodes.Status400BadRequest;
+            return Results.Json(new ApiResponse<object>(null, errors), statusCode: statusCode);
         }
 
         var responseData = new { result.Value.ApplicationId, result.Value.CustomerId, result.Value.Status };
