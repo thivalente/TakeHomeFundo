@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ApplicationFlowProvider } from './application-flow-context';
 
 export const metadata: Metadata = {
   title: 'Task Home Fundo',
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><ApplicationFlowProvider>{children}</ApplicationFlowProvider></body></html>;
 }

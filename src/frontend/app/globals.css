@@ -32,8 +32,15 @@ h1,h2,p { margin-top:0; } h1 { max-width:420px; margin-bottom:22px; font-size:cl
 .approval-title { margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.04em; }
 .approval-copy { margin:0 0 8px; color:var(--muted); font-size:12px; }
 .application-reference { min-height:17px; margin:0; color:var(--accent-dark); font-size:11px; font-weight:700; }
+.denial-hero { grid-template-columns:minmax(300px,.78fr) minmax(420px,1fr); }
+.denial-card { border-color:#f0d1cc; }
+.denial-icon { display:grid; place-items:center; width:31px; height:31px; border-radius:50%; background:#b42318; color:#fff; font-size:18px; font-weight:800; }
+.denial-reasons { display:grid; gap:12px; margin:0; padding:0 0 0 20px; color:#7f271d; font-size:13px; line-height:1.5; }
+.denial-reasons li::marker { color:#b42318; }
+.denial-fallback { margin:0; color:#7f271d; font-size:13px; line-height:1.5; }
+.denial-back-button { display:flex; align-items:center; justify-content:space-between; margin-top:28px; width:220px; text-decoration:none; }
 .form-notice { min-height:17px; margin:16px 0 0; color:#b42318; font-size:12px; text-align:center; } .form-notice.success { color:var(--accent-dark); }
 .privacy-note { margin:18px 0 0; color:var(--muted); font-size:11px; text-align:center; } .privacy-note span { margin-right:5px; color:var(--accent); font-size:8px; }
 .site-footer { display:flex; justify-content:space-between; padding:22px 0 28px; border-top:1px solid var(--line); }
-@media (max-width:840px) { .hero { grid-template-columns:1fr; gap:36px; padding-top:30px; } .hero-copy { padding-bottom:0; } h1 { max-width:600px; } .hero-description { max-width:500px; } }
+@media (max-width:840px) { .hero,.denial-hero { grid-template-columns:1fr; gap:36px; padding-top:30px; } .hero-copy { padding-bottom:0; } h1 { max-width:600px; } .hero-description { max-width:500px; } }
 @media (max-width:560px) { .site-header,.site-footer,.hero { width:min(100% - 32px,480px); } .header-note { display:none; } .hero { padding:28px 0 44px; } h1 { font-size:46px; } .application-card { padding:24px 18px; border-radius:18px; } .two-columns,.address-row { grid-template-columns:1fr; } .address-row { margin-top:10px; } .button-primary { width:180px; } .button-secondary { width:80px; } .site-footer { flex-direction:column; gap:8px; } }

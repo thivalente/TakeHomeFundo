@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Controller, type UseFormRegister, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useApplicationFlow } from './application-flow-context';
 
 const states = [
   ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
@@ -53,6 +55,8 @@ function formatAmount(value: string) {
 function errorId(field: keyof ApplicationForm) { return `${field}-error`; }
 
 export default function Home() {
+  const router = useRouter();
+  const { draft, setApplicationResult, clearDraft } = useApplicationFlow();
   const [showSsn, setShowSsn] = useState(false);
   const [formNotice, setFormNotice] = useState('');
   const [applicationReference, setApplicationReference] = useState('');
@@ -62,6 +66,8 @@ export default function Home() {
     mode: 'onSubmit',
     defaultValues: { firstName: '', lastName: '', companyName: '', ssn: '', address: '', state: '', requestedAmount: '' },
   });
+
+  useEffect(() => { if (draft) reset(draft); }, [draft, reset]);
 
   const onValid = async (values: ApplicationForm) => {
     setIsSubmitting(true);
@@ -76,10 +82,11 @@ export default function Home() {
       });
       const body = await response.json().catch(() => null) as ApiResponse | null;
       if (response.ok) {
+        clearDraft();
         setFormNotice('Your application was approved successfully.');
         setApplicationReference(body?.data?.applicationId ? `Reference: ${body.data.applicationId}` : '');
       } else {
-        showApiErrors(response.status, body);
+        showApiErrors(response.status, body, values);
       }
     } catch {
       setFormNotice('We couldn’t submit your application. Please try again.');
@@ -90,12 +97,13 @@ export default function Home() {
 
   const onClear = () => {
     reset();
+    clearDraft();
     setShowSsn(false);
     setFormNotice('');
     setApplicationReference('');
   };
 
-  const showApiErrors = (status: number, body: ApiResponse | null) => {
+  const showApiErrors = (status: number, body: ApiResponse | null, values: ApplicationForm) => {
     const apiErrors = body?.errors ?? [];
     if (status !== 422) {
       apiErrors.forEach((error) => {
@@ -105,7 +113,8 @@ export default function Home() {
     }
     const messages = apiErrors.map((error) => error.message).filter(Boolean);
     if (status === 422 && messages.length > 0) {
-      setFormNotice(messages.join(' '));
+      setApplicationResult(values, messages);
+      router.push('/denied/');
     } else {
       setFormNotice(status === 400 && messages.length > 0 ? messages.join(' ') : 'We couldn’t submit your application. Please try again.');
     }
@@ -122,14 +131,14 @@ export default function Home() {
     <main className="site-shell">
       <header className="site-header">
         <a className="brand" href="/" aria-label="Task Home Fundo home"><span className="brand-mark" aria-hidden="true">T</span><span>Task Home Fundo</span></a>
-        <span className="header-note">A simpler way forward</span>
+        <span className="header-note">Eligibility check</span>
       </header>
 
       <section className="hero" aria-labelledby="page-title">
-        <div className="hero-copy"><p className="eyebrow">PERSONAL LOAN APPLICATION</p><h1 id="page-title">Take the next step with confidence.</h1><p className="hero-description">Share a few details and we&apos;ll help you find the right path for your goals.</p></div>
+        <div className="hero-copy"><p className="eyebrow">PERSONAL LOAN APPLICATION</p><h1 id="page-title">Submit your loan application.</h1><p className="hero-description">Enter your details and requested amount to check your eligibility.</p></div>
 
         <form className="application-card" aria-label="Loan application form" noValidate onSubmit={handleSubmit(onValid, onInvalid)}>
-          <div className="card-heading"><div><p className="section-kicker">LET&apos;S GET STARTED</p><h2>Your application</h2></div><span className="step-indicator">1 <span>of 1</span></span></div>
+          <div className="card-heading"><div><p className="section-kicker">APPLICATION DETAILS</p><h2>Your application</h2></div><span className="step-indicator">1 <span>of 1</span></span></div>
 
           <div className="field-grid two-columns">
             <Field label="First Name" id="firstName" placeholder="Jane" maxLength={100} error={fieldError('firstName')} register={register} />
@@ -144,11 +153,11 @@ export default function Home() {
 
           <div className="form-actions"><button className="button button-primary" type="submit" disabled={isSubmitting}>{isSubmitting ? <><span className="spinner" aria-hidden="true" />Submitting...</> : <>Apply <span aria-hidden="true">→</span></>}</button><button className="button button-secondary" type="button" disabled={isSubmitting} onClick={onClear}>Clear</button></div>
           {formNotice === 'Your application was approved successfully.' ? <div className="approval-card" role="status" aria-live="polite"><div className="approval-icon" aria-hidden="true">✓</div><div><p className="approval-kicker">APPLICATION APPROVED</p><p className="approval-title">You&apos;re all set!</p><p className="approval-copy">Your application was approved successfully.</p>{applicationReference ? <p className="application-reference">{applicationReference}</p> : null}</div></div> : <p className="form-notice" aria-live="polite">{formNotice}</p>}
-          <p className="privacy-note"><span aria-hidden="true">●</span> Your information is kept safe and secure.</p>
+          <p className="privacy-note"><span aria-hidden="true">●</span> Review your details before submitting.</p>
         </form>
       </section>
 
-      <footer className="site-footer"><span>© 2026 Task Home Fundo</span><span>Built for your next chapter.</span></footer>
+      <footer className="site-footer"><span>© 2026 Task Home Fundo</span><span>Local take-home demo</span></footer>
     </main>
   );
 }

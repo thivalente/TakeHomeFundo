@@ -16,7 +16,7 @@ static IResult ReceiveCustomer(ApprovedApplicationPayload payload, string? route
     var operation = routeCustomerId is null ? "Created" : "Updated";
     var customerId = routeCustomerId ?? payload.CustomerId.ToString();
 
-    logger.LogInformation("Mock received request. Operation={Operation}, Method={Method}, {Customer}", request.Method, operation, payload.ToLogString());
+    logger.LogInformation("Mock received request. Operation={Operation}, Method={Method}, {Customer}", operation, request.Method, payload.ToLogString());
 
     return Results.Ok(new { status = "received" });
 }
