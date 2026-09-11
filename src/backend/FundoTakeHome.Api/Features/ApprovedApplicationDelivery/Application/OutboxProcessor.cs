@@ -32,7 +32,7 @@ public sealed class OutboxProcessor(IOutboxMessageStore store, IUnitOfWork unitO
             return true;
         }
 
-        logger.LogInformation("Outbox message {MessageId} claimed for processing on attempt {Attempt}.", message.MessageId, message.Attempts);
+        logger.LogInformation("Outbox message claimed. MessageId={MessageId}, Attempt={Attempt}.", message.MessageId, message.Attempts);
 
         try
         {
@@ -54,13 +54,15 @@ public sealed class OutboxProcessor(IOutboxMessageStore store, IUnitOfWork unitO
                 return true;
             }
 
+            logger.LogInformation("Outbox delivery started. Operation={Operation}, CustomerId={CustomerId}, ApplicationId={ApplicationId}, Attempt={Attempt}.", delivery.Operation, delivery.CustomerId, delivery.ApplicationId, message.Attempts);
+
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(DeliveryTimeout);
             var result = await integration.SendAsync(delivery, timeout.Token);
 
             if (result.Succeeded)
             {
-                logger.LogInformation("Outbox message {MessageId} was delivered successfully on attempt {Attempt}.", message.MessageId, message.Attempts);
+                logger.LogInformation("Outbox delivery completed successfully. MessageId={MessageId}, {Delivery}, Attempt={Attempt}.", message.MessageId, delivery.ToLogString(), message.Attempts);
 
                 if (await store.MarkProcessedAsync(message.MessageId, message.LockId, dateTimeProvider.UtcNow, cancellationToken))
                     await unitOfWork.SaveChangesAsync(cancellationToken);

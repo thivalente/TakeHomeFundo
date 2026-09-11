@@ -4,7 +4,7 @@ Vídeo da solução: pendente.
 
 ## Executar tudo localmente
 
-O frontend e o mock atual são páginas estáticas servidas por Nginx; por isso, o caminho reproduzível para executar o ambiente completo é Docker Compose:
+O frontend é uma aplicação Next.js exportada como arquivos estáticos e servida por Nginx; o mock é um serviço .NET. O caminho reproduzível para executar o ambiente completo é Docker Compose:
 
 ```bash
 docker compose up --build
@@ -12,12 +12,33 @@ docker compose up --build
 
 Serviços:
 
-- API: http://localhost:8080
-- Swagger: http://localhost:8080/swagger
-- Health check: http://localhost:8080/api/health
-- Frontend: http://localhost:3000
-- Mock externo: http://localhost:4000
+- Frontend: http://localhost:3317
+- API: http://localhost:8317
+- Swagger: http://localhost:8317/swagger
+- Health check: http://localhost:8317/api/health
+- Mock externo: http://localhost:4317/health
 - SQLite: volume Docker `fundotakehome-data`
+
+Portas públicas padrão do projeto:
+
+- Frontend `3317` → container `80`
+- API `8317` → container `8080`
+- Mock externo `4317` → container `80`
+
+As portas foram escolhidas para evitar as portas comuns `3000`, `4000` e `8080`.
+Se alguma delas estiver ocupada, sobrescreva as portas antes de subir o ambiente.
+No PowerShell:
+
+```powershell
+$env:FUNDO_FRONTEND_PORT = "3327"
+$env:FUNDO_API_PORT = "8327"
+$env:FUNDO_MOCK_PORT = "4327"
+docker compose up --build -d
+```
+
+O `NEXT_PUBLIC_API_URL` do frontend é gerado durante o build usando a porta pública
+da API escolhida em `FUNDO_API_PORT`; depois de trocar a porta, execute o build
+novamente.
 
 Para encerrar:
 
@@ -25,13 +46,32 @@ Para encerrar:
 docker compose down
 ```
 
+## Acompanhar a Outbox e o mock
+
+Em outro terminal, acompanhe somente os eventos relevantes da API:
+
+```powershell
+docker compose logs -f --tail=0 api |
+  Select-String "worker started|Outbox message|External integration"
+```
+
+Para acompanhar as chamadas recebidas pelo mock:
+
+```powershell
+docker compose logs -f --tail=0 mock
+```
+
+Uma aplicação nova deve gerar `POST /customers` com `Operation=Created`. Uma aplicação
+do mesmo SSN deve gerar `PUT /customers/{customerId}` com `Operation=Updated`. Os
+healthchecks do Docker e os detalhes internos do framework ficam ocultos nesses logs.
+
 Para executar somente a API fora do Docker:
 
 ```bash
-dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
+dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8317
 ```
 
-Nesse caso, o SQLite fica em `src/backend/FundoTakeHome.Api/data/fundotakehome.db` e o serviço externo precisa estar disponível em `http://localhost:4000/`.
+Nesse caso, o SQLite fica em `src/backend/FundoTakeHome.Api/data/fundotakehome.db` e o serviço externo precisa estar disponível em `http://localhost:4317/`.
 
 ## Testes
 

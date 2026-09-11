@@ -2,6 +2,9 @@
   <Folder Name="/01- Presentation/">
     <Project Path="src/backend/FundoTakeHome.Api/FundoTakeHome.Api.csproj" />
   </Folder>
+  <Folder Name="/03- Mocks/">
+    <Project Path="src/mock/FundoTakeHome.Mock.csproj" />
+  </Folder>
   <Folder Name="/02- Tests/">
     <Project Path="tests/FundoTakeHome.Tests/FundoTakeHome.Tests.csproj" />
   </Folder>

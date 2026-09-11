@@ -1,5 +1,6 @@
 using FundoTakeHome.Api.Features.ApprovedApplicationDelivery.Application.Interfaces;
 using FundoTakeHome.Api.Features.ApprovedApplicationDelivery.Application.Models;
+using FundoTakeHome.Api.Features.SubmitApplication.Domain.ValueObjects.Identifiers;
 using FundoTakeHome.Api.Infrastructure.Persistence;
 using FundoTakeHome.Api.Infrastructure.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,15 @@ public sealed class OutboxMessageStore(FundoTakeHomeDbContext dbContext) : IOutb
 {
     public async Task<OutboxMessageCandidate?> ClaimNextAsync(DateTimeOffset now, DateTimeOffset lockedUntil, Guid lockId, CancellationToken cancellationToken)
     {
-        var message = await dbContext.OutboxMessages
-            .Where(EligibleAt(now))
+        var messages = await dbContext.OutboxMessages
+            .Where(message => message.Status == OutboxStatusEnum.Pending || message.Status == OutboxStatusEnum.Processing)
+            .ToListAsync(cancellationToken);
+
+        // SQLite cannot sort DateTimeOffset in SQL, so the query is split and ordering happens in memory.
+        var message = messages
+            .Where(EligibleAt(now).Compile())
             .OrderBy(message => message.OccurredAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefault();
 
         if (message is null)
             return null;
@@ -30,10 +36,18 @@ public sealed class OutboxMessageStore(FundoTakeHomeDbContext dbContext) : IOutb
 
     public async Task<ApprovedApplicationDeliveryPayload?> LoadDeliveryAsync(OutboxEventEnvelope envelope, CancellationToken cancellationToken)
     {
-        var customer = await dbContext.Customers
-            .AsNoTracking()
-            .Include(current => current.Application)
-            .SingleOrDefaultAsync(current => current.Id.Value == envelope.CustomerId && current.Application != null && current.Application.Id.Value == envelope.ApplicationId, cancellationToken);
+        var customerId = CustomerId.From(envelope.CustomerId).Value!;
+        var applicationId = LoanApplicationId.From(envelope.ApplicationId).Value!;
+
+        var customer = await dbContext.Customers.AsNoTracking().SingleOrDefaultAsync(current => current.Id == customerId, cancellationToken);
+
+        if (customer is not null)
+        {
+            var application = await dbContext.Applications.AsNoTracking().SingleOrDefaultAsync(current => current.CustomerId == customerId && current.Id == applicationId, cancellationToken);
+
+            if (application is not null)
+                customer.AttachApplication(application);
+        }
 
         if (customer?.Application is null)
             return null;
@@ -54,8 +68,7 @@ public sealed class OutboxMessageStore(FundoTakeHomeDbContext dbContext) : IOutb
 
     public async Task<bool> MarkProcessedAsync(Guid messageId, Guid lockId, DateTimeOffset processedAt, CancellationToken cancellationToken)
     {
-        var message = await dbContext.OutboxMessages
-            .SingleOrDefaultAsync(message => message.Id == messageId && message.Status == OutboxStatusEnum.Processing && message.LockId == lockId, cancellationToken);
+        var message = await dbContext.OutboxMessages.SingleOrDefaultAsync(message => message.Id == messageId && message.Status == OutboxStatusEnum.Processing && message.LockId == lockId, cancellationToken);
 
         if (message is null)
             return false;

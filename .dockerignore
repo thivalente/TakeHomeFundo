@@ -3,3 +3,6 @@
 .git/
 .vs/
 docs/ai-handoffs/
+src/frontend/node_modules/
+src/frontend/.next/
+src/frontend/out/

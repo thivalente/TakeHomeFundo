@@ -22,6 +22,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "data"));
 
+var corsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .GetChildren()
+    .Select(section => section.Value)
+    .OfType<string>()
+    .ToArray();
+
+builder.Services.AddCors(options => options.AddPolicy("Frontend", policy => policy
+    .WithOrigins(corsOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddValidatorsFromAssemblyContaining<SubmitApplicationRequestValidator>();
@@ -61,6 +73,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
+app.UseCors("Frontend");
 
 app.MapSubmitApplicationEndpoints();
 

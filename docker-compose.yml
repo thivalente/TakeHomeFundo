@@ -7,19 +7,35 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Data Source=/data/fundotakehome.db
       ExternalService__BaseUrl: http://mock:80/
+      Cors__AllowedOrigins__0: http://localhost:${FUNDO_FRONTEND_PORT:-3317}
+      Cors__AllowedOrigins__1: http://127.0.0.1:${FUNDO_FRONTEND_PORT:-3317}
+    depends_on:
+      mock:
+        condition: service_healthy
     ports:
-      - "8080:8080"
+      - "${FUNDO_API_PORT:-8317}:8080"
     volumes:
       - fundotakehome-data:/data
     networks:
       - fundotakehome
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 -O - http://localhost:8080/api/health > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   frontend:
     build:
       context: src/frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${FUNDO_API_PORT:-8317}
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
-      - "3000:80"
+      - "${FUNDO_FRONTEND_PORT:-3317}:80"
     networks:
       - fundotakehome
 
@@ -28,9 +44,15 @@ services:
       context: src/mock
       dockerfile: Dockerfile
     ports:
-      - "4000:80"
+      - "${FUNDO_MOCK_PORT:-4317}:80"
     networks:
       - fundotakehome
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 -O - http://localhost/health > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
 networks:
   fundotakehome:

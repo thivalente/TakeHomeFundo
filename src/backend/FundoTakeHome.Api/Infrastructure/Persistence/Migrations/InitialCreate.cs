@@ -85,22 +85,19 @@ namespace FundoTakeHome.Api.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.InsertData(
-                table: "BlacklistedSsns",
-                column: "Ssn",
-                values: new object[]
-                {
-                    "000000000",
-                    "111111111",
-                    "222222222",
-                    "333333333",
-                    "444444444",
-                    "555555555",
-                    "666666666",
-                    "777777777",
-                    "888888888",
-                    "999999999"
-                });
+            migrationBuilder.Sql("""
+                INSERT OR IGNORE INTO BlacklistedSsns (Ssn) VALUES
+                    ('000000000'),
+                    ('111111111'),
+                    ('222222222'),
+                    ('333333333'),
+                    ('444444444'),
+                    ('555555555'),
+                    ('666666666'),
+                    ('777777777'),
+                    ('888888888'),
+                    ('999999999');
+                """);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_CustomerId",
