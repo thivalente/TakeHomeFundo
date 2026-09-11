@@ -41,7 +41,7 @@
 | FTH-003-BDD-006 | Negação não consulta Customer/Application nem cria OutboxMessage | critical | teste do handler | xUnit | `tests/FundoTakeHome.Tests/Features/SubmitApplication/SubmitApplicationHandlerTests.cs::ShouldReturnDenialAndAvoidCustomerApplicationAndOutboxPersistence` | execution_pending | Teste compilável; execução fica para o usuário. |
 | FTH-003-BDD-007 | Blacklist SQLite é criada, possui índice único e é semeada com dez SSNs | critical | migration e configuração EF | manual | `src/backend/FundoTakeHome.Api/Infrastructure/Persistence/Migrations/20260910203439_AddBlacklist.cs` e `FundoTakeHomeDbContext.cs` | covered | Migration e seed contêm a tabela, chave única e os dez valores literais. |
 | FTH-003-BDD-008 | SSN nunca é exposto na resposta ou nos erros | critical | inspeção de regra e envelope | manual | `StateIsNyRule.cs`, `BlacklistedSsnRule.cs` e `SubmitApplicationEndpoints.cs` | covered | Mensagem, metadata e resposta usam somente o nome do campo; o valor do SSN não é incluído. |
-| FTH-003-BDD-009 | Falha no lookup da blacklist propaga como erro inesperado 500 | critical | inspeção da porta, adapter e middleware | manual | `SqliteBlacklistSsnReader.cs`, `SubmitApplicationHandler.cs` e `GlobalExceptionHandlingMiddleware.cs` | covered | O adapter não captura exceção e o middleware global converte exceção inesperada em 500. |
+| FTH-003-BDD-009 | Falha no lookup da blacklist propaga como erro inesperado 500 | critical | inspeção da porta, adapter e middleware | manual | `BlacklistSsnReader.cs`, `SubmitApplicationHandler.cs` e `GlobalExceptionHandlingMiddleware.cs` | covered | O adapter não captura exceção e o middleware global converte exceção inesperada em 500. |
 | FTH-003-BDD-010 | Estratégias são testáveis isoladamente e registradas por DI | critical | inspeção de classes e DI | manual | `Application/DecisionRules/**`, `IBlacklistSsnReader.cs` e `Program.cs` | covered | Cada estratégia tem dependência explícita e ambas são registradas por `IEnumerable` no DI. |
 
 ## Estado atual
@@ -72,7 +72,7 @@
 ### Checklist arquitetural — Denied Application / Infrastructure
 
 - **Momento:** pré-Infra
-- **Mapa:** `SqliteBlacklistSsnReader` e `BlacklistedSsnRecord` pertencem a `Infrastructure/Persistence/Blacklist`; `IBlacklistSsnReader` permanece como porta em Application.
+- **Mapa:** `BlacklistSsnReader` pertence a `Infrastructure/Persistence`; `BlacklistedSsnRecord` pertence a `Infrastructure/Persistence/Models`; `IBlacklistSsnReader` permanece como interface em Application.
 - **Q:** OK
 - **Varredura cross-UC:** mappers/loaders/queries/stores equivalentes buscados; blacklist não duplica o store aprovado e não referencia outro UC.
 - **Resultado:** PASS
@@ -124,7 +124,7 @@
 ### Evidência — checklist 1.5
 
 - **Evidência:** migration cria a tabela `BlacklistedSsns`, usa o SSN normalizado como chave única, insere os dez valores e o DI registra leitor e estratégias; o lookup propaga exceções.
-- **Arquivos:** `Infrastructure/Persistence/Blacklist/**`, `Infrastructure/Persistence/FundoTakeHomeDbContext.cs`, `Infrastructure/Persistence/Migrations/InitialCreate.cs`, `Program.cs`, `FundoTakeHome.Api.csproj`.
+- **Arquivos:** `Infrastructure/Persistence/BlacklistSsnReader.cs`, `Infrastructure/Persistence/Models/BlacklistedSsnRecord.cs`, `Infrastructure/Persistence/FundoTakeHomeDbContext.cs`, `Infrastructure/Persistence/Migrations/InitialCreate.cs`, `Program.cs`, `FundoTakeHome.Api.csproj`.
 - **Testes:** validação estática da migration e do mapeamento; nenhum teste de integração.
 - **Micro-gate:** PASS.
 - **O que o código prova agora:** o setup local aplica a migration e disponibiliza a porta de blacklist.

@@ -6,6 +6,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Data Source=/data/fundotakehome.db
+      ExternalService__BaseUrl: http://mock:80/
     ports:
       - "8080:8080"
     volumes:

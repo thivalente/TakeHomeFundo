@@ -1,12 +1,8 @@
 <Solution>
-  <Folder Name="/01- Hosts/">
+  <Folder Name="/01- Presentation/">
     <Project Path="src/backend/FundoTakeHome.Api/FundoTakeHome.Api.csproj" />
-    <Project Path="src/backend/FundoTakeHome.Worker/FundoTakeHome.Worker.csproj" />
   </Folder>
-  <Folder Name="/02- Backend/">
-    <Project Path="src/backend/FundoTakeHome.Backend/FundoTakeHome.Backend.csproj" />
-  </Folder>
-  <Folder Name="/03- Tests/">
+  <Folder Name="/02- Tests/">
     <Project Path="tests/FundoTakeHome.Tests/FundoTakeHome.Tests.csproj" />
   </Folder>
 </Solution>

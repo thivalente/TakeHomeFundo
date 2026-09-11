@@ -1,5 +1,6 @@
-using FundoTakeHome.Backend.Features.SubmitApplication.Application;
-using FundoTakeHome.Backend.Features.SubmitApplication.Domain.Common.Validation;
+using FundoTakeHome.Api.Features.SubmitApplication.Application.Models;
+using FundoTakeHome.Api.Features.SubmitApplication.Application.Validators;
+using FundoTakeHome.Api.Features.SubmitApplication.Domain.Common.Validation;
 using Shouldly;
 
 namespace FundoTakeHome.Tests.Features.SubmitApplication;

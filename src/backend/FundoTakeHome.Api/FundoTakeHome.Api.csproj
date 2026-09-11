@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FundoTakeHome.Backend\FundoTakeHome.Backend.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="ErrorOr" Version="2.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>

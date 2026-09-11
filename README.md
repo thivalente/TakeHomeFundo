@@ -1,27 +1,37 @@
 # Fundo TakeHome
 
-## Subir o ambiente básico
+Vídeo da solução: pendente.
 
-Com Docker Compose:
+## Executar tudo localmente
+
+O frontend e o mock atual são páginas estáticas servidas por Nginx; por isso, o caminho reproduzível para executar o ambiente completo é Docker Compose:
 
 ```bash
 docker compose up --build
 ```
 
-Depois, acesse:
+Serviços:
 
-- API: http://localhost:8080/api/health
+- API: http://localhost:8080
 - Swagger: http://localhost:8080/swagger
-- Frontend placeholder: http://localhost:3000
-- Mock service placeholder: http://localhost:4000
+- Health check: http://localhost:8080/api/health
+- Frontend: http://localhost:3000
+- Mock externo: http://localhost:4000
+- SQLite: volume Docker `fundotakehome-data`
 
-O banco SQLite do backend fica no volume `fundotakehome-data`.
+Para encerrar:
 
-## Executar localmente sem Docker
+```bash
+docker compose down
+```
+
+Para executar somente a API fora do Docker:
 
 ```bash
 dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
 ```
+
+Nesse caso, o SQLite fica em `src/backend/FundoTakeHome.Api/data/fundotakehome.db` e o serviço externo precisa estar disponível em `http://localhost:4000/`.
 
 ## Testes
 
@@ -29,31 +39,32 @@ dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
 dotnet test
 ```
 
-Os testes usam xUnit, Shouldly e Moq.
+Os testes usam xUnit, Shouldly, Moq e NetArchTest. Eles cobrem regras de decisão, domínio, casos de uso do envio e processamento da Outbox.
 
-A cobertura está concentrada nas regras de negócio e nos casos de uso da aplicação. A execução da suíte fica sob responsabilidade do usuário.
+## Dados para demonstração
 
-## Estrutura da solução
+- SSNs `000000000` a `999999999` com todos os nove dígitos iguais são blacklistados e devem ser negados.
+- Use um SSN válido diferente desses, por exemplo `123456789`, para aprovação.
+- Use qualquer estado diferente de `NY` para aprovação.
+- Use `NY` para testar a negação por estado.
+- Para testar cliente retornante, envie duas solicitações aprovadas com o mesmo SSN e dados diferentes. O segundo envio deve atualizar o mesmo Customer e Application.
 
-- `src/backend/FundoTakeHome.Api`: host HTTP da API e endpoints.
-- `src/backend/FundoTakeHome.Worker`: host do processamento assíncrono da Outbox.
-- `src/backend/FundoTakeHome.Backend`: código compartilhado de Domain, Application e Infrastructure.
-- `tests/FundoTakeHome.Tests`: testes de Domain e Application.
-- `src/frontend`: aplicação frontend.
-- `src/mock`: serviço externo simulado.
+## Estrutura e decisões
 
-## Executar os hosts localmente
+- `src/backend/FundoTakeHome.Api/Features/SubmitApplication/Domain`: entidades, value objects, estados e erros de negócio.
+- `src/backend/FundoTakeHome.Api/Features/SubmitApplication/Application`: handler, validação e rule engine. Para adicionar uma regra, implemente `IDecisionRule<DecisionRuleInput>` e registre-a no DI; as regras existentes não precisam ser alteradas.
+- `src/backend/FundoTakeHome.Api/Features/SubmitApplication/Infrastructure`: persistência do Customer, Application e Outbox.
+- `src/backend/FundoTakeHome.Api/Features/ApprovedApplicationDelivery/Application`: coordenação do processamento assíncrono por interfaces, sem conhecer EF ou o endpoint externo.
+- `src/backend/FundoTakeHome.Api/Features/ApprovedApplicationDelivery/Infrastructure`: leitura dos dados atuais e cliente HTTP da integração.
+- `src/backend/FundoTakeHome.Api/BackgroundServices`: polling da Outbox a cada cinco segundos, criando um escopo de DI por ciclo.
+- `tests/FundoTakeHome.Tests`: testes de Domain, Application e regras arquiteturais.
 
-API:
+Na aprovação, Customer, Application e OutboxMessage são persistidos na mesma unidade de trabalho. A requisição HTTP não chama o serviço externo. Depois, o BackgroundService reivindica a mensagem com lease de 30 segundos, confirma o claim antes do HTTP e envia os dados atuais do banco. Falhas temporárias voltam para `Pending` com backoff fixo de cinco segundos; a terceira falha vira `Failed`. A entrega é at-least-once, então o consumidor externo deve tratar `eventId` de forma idempotente.
 
-```bash
-dotnet run --project src/backend/FundoTakeHome.Api --urls http://localhost:8080
-```
+O contrato HTTP detalhado do mock permanece no FTH-006. O cliente usa `ExternalService:BaseUrl`, aceita somente HTTP 200 como sucesso e encaminha a operação `Created` ou `Updated` no payload.
 
-Worker:
+## Trade-offs
 
-```bash
-dotnet run --project src/backend/FundoTakeHome.Worker
-```
-
-A API e o Worker usam o mesmo banco SQLite e compartilham o código de Domain, Application e Infrastructure pelo projeto `FundoTakeHome.Backend`.
+- SQLite foi escolhido para manter uma transação real sem infraestrutura adicional.
+- O processamento assíncrono fica na própria API porque o fluxo é pequeno e não exige um processo Worker separado.
+- Não foram adicionados broker, Polly, circuit breaker ou dead-letter queue; retries são deliberadamente simples e limitados a três tentativas.
