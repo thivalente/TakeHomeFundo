@@ -1,8 +1,10 @@
 # Fundo Take-Home
 
-Demo video: **PENDING**. Add the public video URL before the final delivery.
+Demo video: [Watch the public demonstration](https://www.youtube.com/watch?v=ABLkDLNTMMY)
 
 Repository: [https://github.com/thivalente/TakeHomeFundo](https://github.com/thivalente/TakeHomeFundo)
+
+Project board: [GitHub Project](https://github.com/users/thivalente/projects/4/views/1)
 
 ## Development approach and key decisions
 
@@ -67,7 +69,19 @@ The services are available at:
 | API health | http://localhost:8317/api/health |
 | External mock health | http://localhost:4317/health |
 
-The API stores SQLite data in the Docker volume `fundotakehome-data`. The database file inside the API container is `/data/fundotakehome.db`.
+The API stores SQLite data in the repository bind mount `.docker-data`, mounted as `/data` inside the API container. The database file used by the running Docker API is `/data/fundotakehome.db`, which corresponds to `./.docker-data/fundotakehome.db` on the host. This is not the same file as the database used by a locally launched API (`src/backend/FundoTakeHome.Api/data/fundotakehome.db`). Close database viewer tools before starting the API because SQLite file locking on a Windows bind mount can prevent migrations from acquiring the database lock.
+
+To verify the database used by the running Docker API, inspect the host-side file directly:
+
+```powershell
+@'
+import sqlite3
+db = r'.docker-data\\fundotakehome.db'
+with sqlite3.connect(db) as connection:
+    for table in ('Customers', 'Applications', 'OutboxMessages'):
+        print(table, connection.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0])
+'@ | python -
+```
 
 ### Configure the public ports
 
@@ -118,14 +132,31 @@ Run the .NET test suite from the repository root:
 dotnet test
 ```
 
+Run only the endpoint integration tests with:
+
+```bash
+dotnet test tests/FundoTakeHome.Tests/FundoTakeHome.Tests.csproj --filter FullyQualifiedName~SubmitApplicationEndpointIntegrationTests
+```
+
 The suite covers:
 
 - Rule Engine decisions, request validation, and domain behavior;
 - the application handler, including the returning-customer path;
 - Outbox event parsing and processing;
+- endpoint-level HTTP integration tests through an ASP.NET Core test host;
 - architecture constraints using `NetArchTest`.
 
-There is no separate frontend test script in `src/frontend/package.json`; the frontend is validated manually through the required user flows. The current repository also does not include an automated HTTP/integration test for the endpoint.
+The endpoint integration tests use a temporary SQLite database and apply the existing migrations. They intentionally do not use EF Core InMemory because the tests must exercise relational constraints and real SQLite persistence. The `OutboxBackgroundService` is disabled by the test host so persistence assertions remain deterministic; Outbox delivery behavior remains covered by the existing Outbox unit tests.
+
+The endpoint tests cover:
+
+- approved new customer: HTTP `201`, response identifiers, `Location` header, and Customer/Application/Pending Outbox persistence;
+- New York denial, blacklisted SSN denial, and combined denial: HTTP `422`, denial reasons, and no persistence;
+- invalid request: HTTP `400` with field-level error codes and messages, and no persistence;
+- returning customer: first request HTTP `201`, second request HTTP `200`, stable identifiers, updated values, no duplicates, and an `Updated` Outbox event;
+- transactional rollback for new and returning customers: HTTP `500`, standardized unexpected-error response, and no partial persistence when Outbox saving fails.
+
+There is no separate frontend test script in `src/frontend/package.json`; the frontend is validated manually through the required user flows.
 
 ## Manual validation
 
@@ -160,5 +191,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the project structure, rule engine, t
 ## Known limitations
 
 - The worker polls the Outbox every five seconds and retries a failed delivery up to three times.
+- The Outbox worker currently loads pending candidates into memory because of the local SQLite date filtering and ordering limitation. This is acceptable for the local evaluation, but a higher-volume deployment should use indexed, database-filterable timestamps.
+- The frontend and backend maintain separate copies of the US state-code list. The backend remains authoritative, but changing the list requires updating both locations.
 - Authentication, metrics, tracing, alerting, and structured logging are outside the take-home scope.
 - The external mock is local and exists only to demonstrate the integration contract. A production system could use a dedicated broker or worker service, but that would add operational complexity without improving this small local evaluation.

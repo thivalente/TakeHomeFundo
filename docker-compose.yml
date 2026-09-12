@@ -15,7 +15,7 @@ services:
     ports:
       - "${FUNDO_API_PORT:-8317}:8080"
     volumes:
-      - fundotakehome-data:/data
+      - ./.docker-data:/data
     networks:
       - fundotakehome
     healthcheck:
@@ -57,6 +57,3 @@ services:
 networks:
   fundotakehome:
     driver: bridge
-
-volumes:
-  fundotakehome-data:

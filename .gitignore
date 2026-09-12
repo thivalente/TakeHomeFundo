@@ -4,3 +4,4 @@
 **/bin/
 **/obj/
 src/backend/FundoTakeHome.Api/data/
+.docker-data/

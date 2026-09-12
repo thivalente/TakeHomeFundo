@@ -37,6 +37,16 @@ const applicationSchema = z.object({
 
 type ApplicationForm = z.infer<typeof applicationSchema>;
 
+const emptyApplication: ApplicationForm = {
+  firstName: '',
+  lastName: '',
+  companyName: '',
+  ssn: '',
+  address: '',
+  state: '',
+  requestedAmount: '',
+};
+
 function formatSsn(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 9);
   if (digits.length <= 3) return digits;
@@ -64,7 +74,7 @@ export default function Home() {
   const { register, control, handleSubmit, reset, setError, setFocus, formState: { errors } } = useForm<ApplicationForm>({
     resolver: zodResolver(applicationSchema),
     mode: 'onSubmit',
-    defaultValues: { firstName: '', lastName: '', companyName: '', ssn: '', address: '', state: '', requestedAmount: '' },
+    defaultValues: emptyApplication,
   });
 
   useEffect(() => { if (draft) reset(draft); }, [draft, reset]);
@@ -96,8 +106,8 @@ export default function Home() {
   };
 
   const onClear = () => {
-    reset();
     clearDraft();
+    reset(emptyApplication);
     setShowSsn(false);
     setFormNotice('');
     setApplicationReference('');
@@ -114,7 +124,7 @@ export default function Home() {
     const messages = apiErrors.map((error) => error.message).filter(Boolean);
     if (status === 422 && messages.length > 0) {
       setApplicationResult(values, messages);
-      router.push('/denied/');
+      router.push(new URL('/denied/', window.location.origin).toString());
     } else {
       setFormNotice(status === 400 && messages.length > 0 ? messages.join(' ') : 'We couldn’t submit your application. Please try again.');
     }

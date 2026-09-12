@@ -15,7 +15,7 @@ The backend is a single .NET Minimal API project. It keeps Clean Architecture bo
 - `Infrastructure`: shared EF Core database context, Outbox persistence models, migrations, and cross-cutting services.
 - `BackgroundServices`: the hosted worker that periodically invokes the Outbox processor.
 
-The frontend is in `src/frontend` and the local external-service mock is in `src/mock`. Docker Compose runs all three services and persists SQLite data in a named volume. A denied response is kept in frontend state and routed to `/denied/`, so denial reasons are shown on a dedicated page without putting the SSN in the URL.
+The frontend is in `src/frontend` and the local external-service mock is in `src/mock`. Docker Compose runs all three services and persists SQLite data in the host-side `.docker-data` bind mount. A denied response is kept in frontend state and routed to `/denied/`, so denial reasons are shown on a dedicated page without putting the SSN in the URL.
 
 The organization is Vertical Slice-oriented: code related to a use case stays close together, while shared infrastructure remains explicit. Dependencies point inward through application interfaces, so the application flow does not depend directly on EF Core or the external HTTP implementation.
 
@@ -68,6 +68,8 @@ Transient failures and timeouts are recorded, returned to `Pending`, and retried
 
 This implementation intentionally does not introduce a broker, Polly, circuit breaker, dead-letter queue, or a separate worker service. Those would be reasonable production evolutions, but they add infrastructure beyond the needs of this local challenge.
 
+The current Outbox query loads pending candidates into memory because the local SQLite setup has limitations around filtering and ordering `DateTimeOffset` values. This is acceptable at take-home scale. A higher-volume deployment should store queryable numeric timestamps, add indexes for status and next-attempt time, and select a bounded batch directly in the database.
+
 ## External-service mock
 
 The mock is a small local service that accepts the customer/application payload and returns HTTP `200`. It exposes `/health` for Compose health checks and the customer endpoints used by the API. Its logs mask the SSN so the integration can be observed without printing the complete sensitive field.
@@ -76,9 +78,19 @@ The API uses `ExternalService:BaseUrl`, configured by Compose as `http://mock:80
 
 ## Tests and architectural constraints
 
-The test project covers the Rule Engine, domain behavior, request validation, the application handler, returning-customer updates, Outbox event parsing and processing, and architecture policies. `NetArchTest` verifies the intended dependency boundaries within the single backend assembly.
+The test project covers the Rule Engine, domain behavior, request validation, the application handler, returning-customer updates, Outbox event parsing and processing, endpoint-level HTTP integration, and architecture policies. `NetArchTest` verifies the intended dependency boundaries within the single backend assembly.
 
-The current repository does not include an automated HTTP/integration test for the endpoint. The frontend is validated manually through the scenarios documented in the README; no separate frontend test script is defined.
+The endpoint integration tests build the API through `WebApplicationFactory<Program>` and send real HTTP requests to `POST /api/applications`. Each test uses an isolated temporary SQLite file and applies the existing migrations. EF Core InMemory is deliberately not used: the endpoint assertions depend on SQLite relational constraints, unique indexes, foreign keys, and actual persistence behavior. The test factory removes the `OutboxBackgroundService`; the endpoint tests assert the pending records synchronously, while the existing Outbox tests continue to cover delivery behavior separately.
+
+The integration scenarios cover approved new customers, New York denial, blacklisted SSNs, combined denial, invalid requests, and returning customers. They assert status codes, response payloads, validation or denial fields, the `Location` header for newly created applications, record counts, updated values, and the `Updated` Outbox operation. Denied or invalid requests exit before persistence. A returning customer keeps the same customer and application identifiers, updates the latest values, and creates a second Outbox event.
+
+Run only these tests with:
+
+```bash
+dotnet test tests/FundoTakeHome.Tests/FundoTakeHome.Tests.csproj --filter FullyQualifiedName~SubmitApplicationEndpointIntegrationTests
+```
+
+The frontend is validated manually through the scenarios documented in the README; no separate frontend test script is defined.
 
 ## Trade-offs and scope
 
@@ -87,3 +99,4 @@ The current repository does not include an automated HTTP/integration test for t
 - Polling, a short lease, a fixed retry interval, and three attempts are intentionally simple operational policies for the take-home.
 - Authentication, metrics, tracing, alerting, and structured logging are not implemented because they are outside the requested scope.
 - SSNs are synthetic test data and are stored without encryption in this local implementation; real SSN verification and external lookup are not performed.
+- The frontend and backend keep separate copies of the US state-code list. The backend is authoritative, but changing the list requires updating both locations. A shared contract or generated client would remove this duplication if the list became dynamic.

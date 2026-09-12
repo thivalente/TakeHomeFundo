@@ -15,6 +15,9 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FundoTakeHomeDbContext>();
+    dbContext.Database.OpenConnection();
+    dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=DELETE;");
+    dbContext.Database.CloseConnection();
     dbContext.Database.Migrate();
 }
 
@@ -32,3 +35,5 @@ app.MapSubmitApplicationEndpoints();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).WithName("Health");
 
 app.Run();
+
+public partial class Program;
